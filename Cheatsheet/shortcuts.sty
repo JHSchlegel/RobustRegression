@@ -1,0 +1,205 @@
+% ===============
+% === GENERAL ===
+
+% better design for tables
+%	Rules:	- Avoid vertical lines
+%			- Avoid double lines
+%	useful commands
+%			- \toprule	\midrule	\bottomrule		% rules
+%			- \cmidrule{a,b}						% rule from * to *
+%			- \addlinespace							% linespace (to add after each line)
+%			- \toprule[3pt]							% change width of the rule
+
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb,mathtools,bm,autobreak,cancel}
+\usepackage{xparse}% Custom Document Command
+\usepackage[safe]{tipa} % for overset
+\usepackage{trfsigns} %\laplace
+\usepackage{units}
+\usepackage{etoolbox}
+
+
+% =============
+% === UTILS ===
+
+\newcommand\dotwhenblank[1]{\ifblank{#1}{\:\cdot\:}{#1}}% Fill with dot when blank
+
+% Short minus and transpose
+\newcommand\minus{\scalebox{.6}[1]{$-$}}
+\newcommand\minusone{{\minus 1}}
+\newcommand\minustop{{\minus\!\top}}
+
+% Add characters
+\def\hbar{{\mathchar'26\mkern-7mu h}}
+\def\bbar{{\mathchar'26\mkern-7mu b}}
+\def\dbar{{\mathchar'26\mkern-11mu d}}
+
+% ================
+% === BRACKETS ===
+
+\DeclarePairedDelimiterX{\paren}[1]\lparen\rparen{
+    \renewcommand\given{\nonscript\:\delimsize\vert\nonscript\:\mathopen{}}%
+    \dotwhenblank{#1}}% --- ( ) ---
+\let\brack\undefined
+\DeclarePairedDelimiterX{\brack}[1]\lbrack\rbrack{
+    \renewcommand\given{\nonscript\:\delimsize\vert\nonscript\:\mathopen{}}%
+    \dotwhenblank{#1}}% --- [ ] ---
+\let\brace\undefined
+\DeclarePairedDelimiterX{\brace}[1]\lbrace\rbrace{
+    \renewcommand\given{\nonscript\:\delimsize\vert\nonscript\:\mathopen{}}%
+    \dotwhenblank{#1}}% --- { } ---
+
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}%--- ceil ---
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}% --- floor ---
+
+
+% ===============================
+% === SUBSCRIPT / SUPERSCRIPT ===
+
+\providecommand*{\ped}[1]{\ensuremath{_\mathrm{#1}}}% --- subscript ---
+\providecommand*{\ap}[1]{\ensuremath{^\mathrm{#1}}}% --- superscript ---
+
+
+% ==================
+% === PRIMITIVES ===
+
+%\let\exp\undefined
+%\NewDocumentCommand{\exp}{sD[]{}m}{\mathop{\mathrm{exp}}_{#2}%
+%    \ifblank{#3}{}{%
+%    \IfBooleanTF#1{\paren*{#3}}{\paren{#3}}}}% --- Exponential ---
+% ---
+\DeclareMathOperator{\argmax}{arg\,max}% --- argmax ---
+\DeclareMathOperator{\argmin}{arg\,min}% --- argmin ---
+% ---
+\providecommand*{\iu}{\ensuremath{j\mkern1mu}}% --- imaginary unit ---
+\providecommand*{\eu}{\ensuremath{\mathrm{e}}}% --- Euler number ---
+% ---
+\DeclareMathOperator{\R}{\mathbb{R}}% --- Real ---
+\DeclareMathOperator{\C}{\mathbb{C}}% --- Complex ---
+\let\Re\undefined\DeclarePairedDelimiterXPP\Re[1]
+    {\mathrm{Re}}\lbrace\rbrace{}{#1}% --- Real part ---
+\let\Im\undefined\DeclarePairedDelimiterXPP\Im[1]
+    {\mathrm{Im}}\lbrace\rbrace{}{#1}% --- Imaginary part ---
+% ---
+\newcommand{\tothe}[1]{\mathop{\scalebox{.8}{%
+    \textrm{E}}\textrm{#1}}}% --- e.g. 10E-3 ---
+
+
+
+% ======================
+% === LINEAR ALGEBRA ===
+
+\DeclarePairedDelimiterX{\abs}[1]\lvert\rvert{
+    \dotwhenblank{#1}}% --- Absolute ---
+\DeclarePairedDelimiterX{\norm}[1]\lVert\rVert{
+    \dotwhenblank{#1}}% --- Norm ---
+\DeclarePairedDelimiterX{\avg}[1]\langle\rangle{
+    \dotwhenblank{#1}} % --- Average value ---
+
+
+% =======================
+% === COMPLEX ALGEBRA ===
+
+\newcommand{\underhat}[1]{\underline{\hat{#1}}}% --- complex AC formulas ---
+
+
+% ===================
+% === PROBABILITY ===
+
+\newcommand\given\mid% Ensure it exists
+
+% Usage (in math mode): \P*[sub]{blah \mid blah}
+\let\P\undefined
+\NewDocumentCommand{\P}{sD[]{}m}{\mathbb{P}_{#2}%
+    \IfBooleanTF#1{\paren*{#3}}{\paren{#3}}}% --- Probability ---
+
+\NewDocumentCommand{\E}{sD[]{}m}{\mathbb{E}_{#2}%
+    \IfBooleanTF#1{\brack*{#3}}{\brack{#3}}}% --- Expectation value ---
+
+\NewDocumentCommand{\V}{sD[]{}m}{\mathbb{V}_{#2}%
+    \IfBooleanTF#1{\brack*{#3}}{\brack{#3}}}% --- Variance ---
+
+\NewDocumentCommand{\Cov}{sD[]{}m}{\mathbb{C}\mathrm{ov}_{#2}%
+    \IfBooleanTF#1{\paren*{#3}}{\paren{#3}}}% --- Covariance ---
+% ---
+\NewDocumentCommand{\Gauss}{sD[]{}m}{\mathcal{N}_{#2}
+    \IfBooleanTF#1{\paren*{#3}}{\paren{#3}}}% --- Gaussian distribution ---
+
+
+% =============
+% === UNITS ===
+
+\DeclareMathAccent{\ring}{\mathalpha}{operators}{"17}% --- ring ---
+\providecommand*{\angs}{\ensuremath{\smash{\mathrm{\ringA}}}}% --- angs ---
+\providecommand*{\ohm}{\ensuremath{\mathrm{\Omega}}}% --- Ohm ---
+\providecommand*{\degree}{\ensuremath{^\circ}}% --- degree ---
+\providecommand*{\celsius}{\ensuremath{\mathrm{^\circC}}}% --- Celsius ---
+\providecommand*{\micro}{\ensuremath{\mu}}% --- micro ---
+	
+%\providecommand*{\unit}[1]{%				        % '\unit'		% unit macro
+%	\ensuremath{\, \mathrm{#1}}}
+%\providecommand*{\fracunit}[2]{%			        % '\fracunit'	% unit macro for fracs
+%	\ensuremath{\, \frac{\mathrm{#1}}{\mathrm{#2}}}}
+
+
+% ===================================
+% === DIFFERENTIAL AND DERIVATIVE ===
+
+\makeatletter
+\providecommand*{\diff}%
+	{\@ifnextchar^{\DIfF}{\DIfF^{}}}% --- Differential operator ---
+\def\DIfF^#1{%
+	\mathop{\mathrm{\mathstrut d}}%
+		\nolimits^{#1}\gobblespace}
+\def\gobblespace{%
+		\futurelet\diffarg\opspace}
+\def\opspace{%
+	\let\DiffSpace\!%
+	\ifx\diffarg(%
+		\let\DiffSpace\relax
+	\else
+		\ifx\diffarg[%
+			\let\DiffSpace\relax
+		\else
+			\ifx\diffarg\{%
+				\let\DiffSpace\relax
+			\fi\fi\fi\DiffSpace}
+
+\NewDocumentCommand{\deriv}{D[]{}mm}{%
+    \frac{\diff^{#1}#2}{\diff#3^{#1}}}% --- derivative ---
+\NewDocumentCommand{\pderiv}{D[]{}mm}{%
+    \frac{\partial^{#1}#2}{\partial#3^{#1}}}% --- partial derivative ---
+
+
+% ==============
+% === BOXING ===
+
+% Define colors
+%\usepackage[svgnames]{xcolor}
+\colorlet{algorithm-color}{Silver!30}
+\colorlet{highlight-color}{Gold!30}
+
+\newcommand{\algobox}[2][1]{%
+    \colorbox{algorithm-color}{%
+        \begin{minipage}{\dimexpr#1\linewidth-2\fboxsep\relax}#2\end{minipage}%
+    }}% --- Algorithm box ---
+
+\newcommand{\highlight}[2][highlight-color]{%
+    \relax\ifmmode% if in math mode
+        \mathchoice%
+        {\colorbox{#1}{$\displaystyle#2$}}%
+        {\colorbox{#1}{$\textstyle#2$}}%
+        {\colorbox{#1}{$\scriptstyle#2$}}%
+        {\colorbox{#1}{$\scriptscriptstyle#2$}}%
+    \else% not in math mode
+        \colorbox{#1}{#2}%
+    \fi}% --- \highlight[<color>]{<stuff>} ---
+
+%\newcommand{\todo}[1]{\textcolor{red!80}{%
+%    \sffamily\bfseries TODO\ifblank{#1}{~}{:}} #1}% --- TODO ---
+
+\newcommand{\todo}[1]{\fcolorbox{red!80}{white!0}{%
+    \begin{minipage}{\dimexpr\linewidth-2\fboxsep-2\fboxrule\relax}%
+        \textcolor{red!80}{\sffamily\bfseries TODO\ifblank{#1}{~}{:}} #1%
+    \end{minipage}%
+}}% --- TODO ---

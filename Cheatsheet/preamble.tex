@@ -1,0 +1,166 @@
+% Language package 
+% \usepackage[utf8]{inputenc} % Not to use with Xe-LaTeX!
+\usepackage[no-math]{fontspec}
+\usepackage{kpfonts}
+\usepackage[T1]{fontenc}
+\usepackage[english,ngerman]{babel}
+
+% Flush left
+\usepackage[document]{ragged2e}
+
+% Set date format
+\usepackage[useregional=numeric]{datetime2}
+
+% Arithmetic / Coding package
+\usepackage{ifthen}
+\usepackage{calc}
+
+% Spacing
+\setlength\columnsep{10pt}% Column spacing for multicols
+\usepackage{setspace}\setstretch{1.1}
+% Move operators tighter together
+\thinmuskip=2mu                     % default: 3mu
+\medmuskip=3mu plus 1mu minus 3mu   % default: 4mu plus 2mu minus 4mu
+\thickmuskip=4mu plus 1mu minus 3mu % default: 5mu plus 5mu
+%\setlength{\thickmuskip}{5mu}      % not possible due to \usepackage{calc}
+% Array and matrix spacing
+\setlength\arraycolsep{1pt}
+
+% Control (primitive) list items
+\usepackage{enumitem}
+\setlist{leftmargin=*,nosep,labelsep=5pt,parsep=-0.2pt}  % reduce spaces
+\setlist[itemize,2]{label=$\circ$}
+
+% Formatting
+\usepackage{multicol, multirow, tabularx}
+\usepackage{makecell}
+\usepackage{ulem} % for custom underline/strikethrough/...
+
+% Images
+\usepackage{graphicx}
+
+% Custom emphasizing
+\DeclareTextFontCommand{\emph}{\color{MediumOrchid}\bfseries\sffamily}
+
+
+% =============
+% === FONTS ===
+
+% Font sizes
+\setkomafont{section}{\normalsize}
+\setkomafont{subsection}{\normalsize}
+\setkomafont{subsubsection}{\normalsize}
+%\setkomafont{paragraph}{\normalsize}
+%\setkomafont{subparagraph}{\normalsize}
+
+% Define minion font
+\newfontfamily{\minionpro}{MinionPro}[%
+    Path=fonts/MinionPro/,
+    Extension=.otf,
+    UprightFont=*-Regular,
+    BoldFont=*-Bold,
+    ItalicFont=*-It,
+    BoldItalicFont=*-BoldIt,
+    WordSpace=0.8,
+]
+
+% Set fonts
+\setmainfont{MinionPro}[%
+    Path=fonts/MinionPro/,
+    Extension=.otf,
+    UprightFont=*-Regular,
+    BoldFont=*-Bold,
+    ItalicFont=*-It,
+    BoldItalicFont=*-BoldIt,
+    WordSpace=0.8,
+]
+\setsansfont[LetterSpace=-1.8,WordSpace=0.8,Scale=0.95]{Open Sans}
+\setmonofont[LetterSpace=-1.0,WordSpace=0.8]{Source Code Pro}
+
+\defaultfontfeatures{Mapping=tex-text}
+\defaultfontfeatures{Ligatures=TeX}
+\addfontfeature{LetterSpace=-20.0}
+
+
+% ====================
+% === TITLE FORMAT ===
+
+\usepackage{titling}
+
+% Reduce default vertical space before and after
+\setlength{\droptitle}{-3em}
+\renewcommand{\maketitlehookd}{\vspace{-1.5em}}
+
+% Title
+\pretitle{\centering\sffamily\large\bfseries}
+\posttitle{\par}
+% Author
+\preauthor{\centering\sffamily\small}
+\postauthor{\ifx\thedate\empty{\par}\else{}\fi}
+% Date - remove spacing above and below
+\predate{\centering\sffamily\small\ifx\thedate\empty{}\else{\;-\;}\fi\itshape}
+\postdate{\ifx\thedate\empty{}\else{\par}\fi}
+
+
+% =======================
+% === SECTIONS FORMAT ===
+
+\usepackage[svgnames]{xcolor}
+
+% Make spacing tight
+\RedeclareSectionCommands[%
+    runin=false,
+    beforeskip=1ex plus .5ex,
+    afterskip=0ex plus .1ex,
+]{section, subsection, subsubsection}
+
+% Define colors
+\colorlet{section_color}{RoyalBlue!80}
+\colorlet{subsection_color}{RoyalBlue!50}
+\colorlet{subsubsection_color}{RoyalBlue!20}
+\colorlet{section_text_color}{white}
+\colorlet{subsection_text_color}{black}
+\colorlet{subsubsection_text_color}{black}
+
+% Put in colored box
+\makeatletter
+\renewcommand\sectionlinesformat[4]{%
+    \colorbox{#1_color}{%
+        \begin{minipage}[b][.8em][t]{\dimexpr\linewidth-2\fboxsep\relax}
+            \vspace{-.1ex}%
+            \raggedsection\color{#1_text_color}\@hangfrom{#3}{#4}%
+            \vspace{-.1ex}%
+        \end{minipage}%
+}}
+\makeatother
+
+
+% ===========================
+% === HEADERS AND FOOTERS ===
+
+\usepackage[footsepline]{scrlayer-scrpage}
+
+\pagestyle{plain.scrheadings}
+
+% Clear and set styles
+\clearpairofpagestyles
+%\clearscrheadfoot
+\setkomafont{pageheadfoot}{\color{gray}\sffamily}
+
+% Reset pagination format
+\setkomafont{pagination}{}
+
+% Set content
+%\ihead*{}
+%\chead*{}
+%\ohead*{tstreule $\vert$ Page \pagemark}
+%\ifoot*{}
+%\cfoot*{}
+%\ofoot*{}
+
+
+% ====================
+% === MATH STYLING ===
+%%%%\everymath\expandafter{\the\everymath\color{DarkBlue}}
+\everymath{\color{DarkBlue}}
+\everydisplay{\color{DarkBlue}}

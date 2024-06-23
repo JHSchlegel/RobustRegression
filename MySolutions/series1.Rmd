@@ -1,0 +1,222 @@
+---
+title: "Series 1"
+author: "Jan Schlegel"
+date: "2024-06-23"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(robustbase)
+library(MASS)
+library(GGally)
+```
+
+# Breakdown-Point:
+
+
+Mean: $0$
+Median: $\dfrac{1}{2}$
+
+# Confidence Interval:
+
+```{r}
+harvest = scan(url("http://stat.ethz.ch/Teaching/Datasets/WBL/ertrag.dat"))
+```
+
+## [a]
+```{r}
+robfit = huberM(harvest, se = T, k = 1.345)
+
+robfit$mu + c(-1, 1) * qt(0.975, length(harvest) - 1) * robfit$SE
+```
+
+## [b]
+
+```{r}
+fit = lm(harvest ~ 1)
+confint(fit)
+
+## same as t.test(harvest)
+```
+
+
+
+# Different Linear Regressions:
+
+```{r}
+url = "https://stat.ethz.ch/Teaching/Datasets/WBL/oatsM16.dat"
+oats = read.table(url, header = TRUE)
+
+oats$Block = as.factor(oats$Block)
+oats$Variety = as.factor(oats$Variety)
+```
+
+
+## [a]
+
+```{r}
+get_l1_dist = function(coefs1, coefs2) {
+  return(sum(abs(coefs1 - coefs2)))
+}
+
+# classical OLS:
+fit = lm(ValuesOrg ~ Block + Variety, data = oats)
+robustfit = rlm(ValuesOrg ~ Block + Variety, data = oats, psi = psi.huber, method = "M", maxit = 50)
+```
+
+
+```{r}
+# residual standard error
+sum_fit = summary(fit)
+sum_fit$sigma
+
+sum_robfit = summary(robustfit)
+sum_robfit$sigma
+```
+
+
+```{r}
+par(mfrow = c(1, 2))
+plot(fit, which = 2)
+plot(robustfit, which = 2)
+```
+Stronger evidence for skewness and fat tails in robust fit.
+
+
+```{r}
+cat("L1 distance between coefs: ", get_l1_dist(coef(fit), coef(robustfit)))
+```
+
+
+```{r}
+drop1(fit, test = "F")
+```
+
+
+
+Both variables are significant on the 5% level.
+
+
+## [b]
+```{r}
+fit_out =  lm(Values ~ Block + Variety, data = oats)
+robustfit_out = rlm(Values ~ Block + Variety, data = oats, psi = psi.huber, method = "M", maxit = 50)
+```
+
+
+```{r}
+# residual standard error
+sum_fit = summary(fit_out)
+sum_fit$sigma
+
+sum_robfit = summary(robustfit_out)
+sum_robfit$sigma
+```
+
+
+```{r}
+par(mfrow = c(1, 2))
+plot(fit_out, which = 2)
+plot(robustfit_out, which = 2)
+```
+
+
+
+```{r}
+cat("L1 distance between coefs: ", get_l1_dist(coef(fit_out), coef(robustfit_out)))
+cbind(coef(fit), coef(robustfit))
+cbind(coef(fit_out), coef(robustfit_out))
+```
+Much larger difference between OLS and robustly fitted coefficents. Robustly estimated coefficients are "robust" i.e. approximately the same when using Values or ValuesOrg.
+
+```{r}
+drop1(fit_out, test = "F")
+```
+
+We can see that Block is no longer significant on the 5% level.
+
+
+
+# Influence Function for a Simple Linear Regression:
+
+```{r}
+url = "http://stat.ethz.ch/Teaching/Datasets/WBL/irisset.dat"
+iris = read.table(url, header = T)
+```
+
+
+```{r}
+GGally::ggpairs(iris, diag = list(continuous = wrap("barDiag", bins = 10))) +
+  theme_bw()
+```
+
+Outlier is clearly visible.
+
+
+## [a]
+
+```{r}
+iris.n = iris
+vals = c(2.5, 2.9, 3.3, 4.1)
+betas = numeric(length(vals) + 1)
+
+SCs = numeric(length(vals))
+
+betas[1]= coef(lm(y~x, data = iris))[2]
+
+
+for (i in seq_along(vals)){
+  iris.n[42, 2] <- vals[i]
+  beta = coef(lm(y~x, data = iris.n))[2]
+  betas[i+1] = beta
+  
+  SCs[i] = (betas[i+1] - betas[1]) / (1/ncol(iris.n))
+}
+
+SCs
+
+plot(vals, SCs,type = "o")
+```
+
+Hence, the relationship is linear.
+
+## [b]
+
+
+```{r}
+iris.n = iris
+vals = c(2.3, 2.5, 2.9, 3.3, 4.1)
+
+plot(iris)
+for (i in seq_along(vals)){
+  iris.n[42, 2] <- vals[i]
+  r.iris = lm(y~x, data = iris.n)
+  t.lab <- 2
+  abline(r.iris, lty = t.lab); points(iris.n[42, ], lty = t.lab, pch = t.lab)
+}
+legend("topright", legend = paste("y_42 Value: ", vals), lty = seq_along(vals) + 1, pch = seq_along(vals) + 1)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
