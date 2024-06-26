@@ -1,0 +1,467 @@
+---
+title: "Series 2"
+author: "Jan Schlegel"
+date: "2024-06-25"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(robustbase)
+library(MASS)
+library(tidyverse)
+library(RobStatTM)
+```
+
+
+# Robust Regression and Leverage Points
+
+```{r}
+url <- "https://stat.ethz.ch/Teaching/Datasets/cas-das/dsteam.dat"
+temp = read.table(url, header=TRUE)
+```
+
+
+## [a]
+```{r}
+pairs(temp)
+```
+
+
+## [b]
+
+```{r}
+colnames(temp)
+```
+
+
+
+```{r}
+formula = as.formula("Steam ~ Operating.Days + Temperature")
+fit.lm = lm(formula, data = temp)
+fit.mm = lmrob(formula, data = temp)
+fit.m = rlm(formula, data = temp, method = "M")
+```
+
+
+```{r}
+summary(fit.lm)
+```
+```{r}
+summary(fit.mm)
+```
+
+```{r}
+summary(fit.m)
+```
+
+All are highly significant but lm and M yield similar results but MM yields completely different results.
+
+
+## [c]
+
+```{r}
+plot(fit.lm)
+scatter.smooth(temp$Operating.Days, resid(fit.lm))
+scatter.smooth(temp$Temperature, resid(fit.lm))
+```
+
+
+```{r}
+plot(fit.mm)
+scatter.smooth(temp$Operating.Days, resid(fit.mm))
+scatter.smooth(temp$Temperature, resid(fit.mm))
+```
+For the MM-estimation, the two outliers with a low Operating.Days value can clearly be identified as outliers but the same cannot be said for the lm fit.
+
+
+## [d]
+
+```{r}
+colnames(temp)
+formula = as.formula("Steam ~ Operating.Days + Temperature + Working.Holidays")
+fit.lm.hol = lm(formula, data = temp)
+fit.mm.hol = lmrob(formula, data = temp)
+```
+
+```{r}
+summary(fit.lm.hol)
+```
+
+
+```{r}
+summary(fit.mm.hol)
+```
+
+
+Now the coefficients look more similar
+
+## [e]
+
+```{r}
+t.ylim <- range(temp$Steam, fitted(fit.lm.hol), fitted(fit.mm.hol))
+plot(temp$Steam, type = "l", ylim = t.ylim, ylab = "")
+lines(fitted(fit.lm.hol), lty = 2, col = 2)
+lines(fitted(fit.mm.hol), lty = 3, col = 3)
+```
+
+
+```{r}
+df_nohol = data.frame(time = 1:nrow(temp), steam = temp$Steam, lm = fitted(fit.lm), mm= fitted(fit.mm))
+df_hol = data.frame(time = 1:nrow(temp), steam = temp$Steam, lm = fitted(fit.lm.hol), mm = fitted(fit.mm.hol))
+
+plot_df = bind_rows(list(dummy_var = df_hol, no_dummy_var = df_nohol), .id = "indicator")
+
+plot_df |> 
+  ggplot(aes(x = time)) +
+  geom_line(aes(y=steam, color = "original", linetype="original")) +
+  geom_line(aes(y=lm, color = "lm", linetype="lm")) +
+  geom_line(aes(y=mm, color = "mm", linetype = "mm")) +
+  scale_color_manual(values = c("original"="black", "lm" = "red", "mm"="forestgreen")) +
+  scale_linetype_manual(values = c("original" = "solid", "lm" = "dashed", "mm" = "dotted")) +
+  facet_wrap(~indicator)+
+  theme_bw()
+```
+
+
+
+# Model Selection:
+
+```{r}
+wood.url = "https://stat.ethz.ch/Teaching/Datasets/cas-das/wood.dat"
+wood.cont.url = "https://stat.ethz.ch/Teaching/Datasets/cas-das/woodRous.dat"
+
+wood.org = read.table(wood.url, header=T)
+wood.cont = read.table(wood.cont.url, header=T)
+wood = wood.cont
+```
+
+```{r}
+glimpse(wood)
+```
+
+```{r}
+glimpse(wood.cont)
+```
+
+
+## [a]
+```{r}
+wood[, 1:2] = sqrt(wood[, 1:2])
+wood[, 3:5] = asin(sqrt(wood[, 3:5]))
+```
+
+
+## [b]
+
+```{r ,fig.height=15}
+pairs(wood.org, lower.panel=panel.smooth)
+```
+
+## [c]
+```{r}
+wood.formula = as.formula("SpGew ~ .")
+wood.lm = lm(wood.formula, data = wood)
+
+summary(wood.lm)
+```
+
+`nFrFas`, `nSoFas` and `FrLicht` are not significant.
+
+
+```{r, fig.height = 8}
+par(mfrow = c(2,2))
+plot(wood.lm)
+```
+We don't see anything special.
+
+
+Running `step()` yields:
+```{r}
+wood.step = step(wood.lm, direction = "backward", trace = F)
+summary(wood.step)
+```
+
+
+
+## [d]
+
+```{r}
+wood.mm1 = lmrob(wood.formula, data = wood)
+summary(wood.mm1)
+```
+
+```{r}
+wood.mm2 = lmrob(SpGew ~ . - nSoFas, data = wood)
+summary(wood.mm2)
+```
+
+```{r}
+anova(wood.mm1, wood.mm2, test = "Wald")
+```
+
+```{r}
+anova(wood.mm1, wood.mm2, test = "Deviance")
+```
+
+## [f]
+
+```{r}
+wood.org[, 1:2] = sqrt(wood.org[, 1:2])
+wood.org[, 3:5] = sqrt(wood.org[, 3:5])
+```
+
+```{r}
+sort(abs(rstandard(wood.lm)))
+```
+
+
+## [g]
+
+```{r}
+lm.rm = lm(SpGew ~ ., data = wood, subset = -c(4, 6, 8, 19))
+lm.without = step(lm.rm, direction= "backward", trace = F)
+lm.without
+```
+
+
+
+```{r}
+h.cont = lmrobdet.control(bb=0.5, efficiency = 0.85, family = "bisquare")
+rlm1 = lmrobdetMM(SpGew~., data = wood.cont, control = h.cont)
+step.lmrobdetMM(rlm1)
+```
+
+
+
+# Exercise 3:
+
+```{r}
+synth.url = "http://stat.ethz.ch/Teaching/Datasets/cas-das/Synthetisch.dat"
+synth = read.table(synth.url, header = T)
+```
+
+
+
+## [a]
+
+```{r}
+s.lm = lm(y~ x1+x2, data = synth)
+summary(s.lm)
+```
+
+
+First, note that all coefficients are highly significant.
+
+```{r, fig.height=8}
+par(mfrow=c(2,2))
+plot(s.lm)
+```
+
+We do not see anything special in th eresidual analysis. The expected value of the residuals appears to be zero, the variance homoscedastic and the residuals normally distributed.
+
+
+## [b]
+```{r}
+s.smdm = lmrob(y~., data = synth, setting = "KS2014")
+summary(s.smdm)
+```
+
+
+Again, all coefficients are highly significant.
+
+```{r, fig.height=8}
+par(mfrow=c(2,2))
+plot(s.smdm)
+```
+
+We can see 8 clear outliers.
+
+## [c]
+
+The coefficients differ strongly (even different sign). When using the classical approach, there is not a slight hint that there might be problems in the data.
+
+
+
+# Exercise 4:
+```{r}
+apt <- read.table("http://stat.ethz.ch/Teaching/Datasets/cas-das/aptitude.dat",
+header = TRUE)
+```
+
+```{r}
+glimpse(apt)
+```
+
+
+## [a]
+
+Logistic Regression
+
+
+## [b]
+
+```{r}
+apt.glm = glm(PASS~., data = apt, family = binomial(link="logit"))
+summary(apt.glm)
+```
+
+Only the intercept and EXP appear to have a significant effect on passing the test.
+
+## [c]
+
+```{r}
+apt |>
+  mutate(label = 1:nrow(apt)) |> 
+  ggplot(aes(x = PASS, y=EXP)) +
+  geom_point() +
+  geom_text(aes(label = label), vjust = 0.5, hjust=1.5)
+  theme_bw()
+```
+
+Observations 20 and 11 clearly have a lower experience level than one would expect.
+
+
+
+## [d]
+
+```{r}
+s.rglm = glmrob(PASS ~., data = apt, family = binomial(), method = "Mqle")
+summary(s.rglm)
+```
+
+
+SCORE changed the most, other two stayed more or less the same.
+
+## [e]
+
+```{r}
+names(s.rglm)
+
+plot(s.rglm$w.r)
+```
+
+
+
+We can clearly see that the observations 11 and 20, which we previously identified as outliers, are downweighted.
+
+## [f]
+
+```{r}
+plot(s.rglm$w.x)
+```
+
+Obviously, all the weights of the design points are one.
+
+```{r}
+apt |> 
+  mutate(label = 1:nrow(apt)) |> 
+  ggplot(aes(x = EXP, y=SCORE)) + 
+  geom_point() +
+  geom_text(aes(label = label), hjust = 1.5, vjust = 0.5) +
+  theme_bw()
+```
+
+
+# Exercise 5
+
+```{r}
+data(epilepsy)
+```
+
+```{r}
+glimpse(epilepsy)
+```
+
+## [a]
+ 
+Poisson Regression
+
+## [b]
+
+```{r}
+ep.formula = as.formula("Ysum ~ Age10 + Trt + Base4 + Base4:Trt + Age10:Trt")
+ep.glm = glm(ep.formula, data = epilepsy, family = poisson())
+summary(ep.glm)
+```
+
+
+Only Age10 and Base4 appear to have significant influence.
+
+## [c]
+
+```{r}
+ep.rglm = glmrob(ep.formula, data = epilepsy, family = poisson(), method = "Mqle", weights.on.x = "hat")
+
+summary(ep.rglm)
+```
+
+
+
+Again, only Base4 and Age10 are significant. The coefficients don't differ by much.
+
+## [d]
+
+```{r}
+ep.rglm2 = glmrob(Ysum ~ Age10 + Trt + Base4, data = epilepsy, family = poisson(), method = "Mqle", weights.on.x = "hat")
+
+summary(ep.rglm2)
+```
+
+All coefficients are significant.
+
+```{r}
+anova(ep.rglm, ep.rglm2, test = "QD")
+```
+
+Thus, the interactions should not be included. The model with interactions does not significantly perform better in terms of quasi-deviance. Additionally, without interactions, the treatment coef is significant.
+
+
+## [e]
+
+```{r}
+ep.df = data.frame(wx = ep.rglm2$w.x, label = 1:length(ep.rglm2$w.x))
+
+ep.df |> 
+  ggplot(aes(x=label, y = wx)) +
+  geom_point() +
+  geom_text(aes(label = label), hjust = 1.5, vjust = 0.5)
+```
+
+Observation has the lowest weight
+
+```{r}
+epilepsy |> 
+  mutate(label = 1: nrow(epilepsy)) |> 
+  ggplot(aes(x = Base4, y = Age10)) +
+  geom_point(size = 0.5)+
+  geom_text(aes(label = label), hjust = 1.5, vjust = 0.5 ) + theme_bw()
+```
+
+
+
+It is evident that 49 is also a outlier in the marginal distributions.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
