@@ -35,6 +35,10 @@
 ################################################################################
 
 
+# Summary -----------------------------------------------------------------
+summary(fit.nls, corr = T)
+
+
 # Confidence Intervals ----------------------------------------------------
 ## Linearization:
 sm.nls = summary(fit.nls)
@@ -47,7 +51,10 @@ confint(fit.nls)
 
 
 # Residual Analysis -------------------------------------------------------
-## TA-plot:
+## Tukey-Anscombe plot:
+# should not show any special structure
+
+# ggplot:
 data.frame(
   fitted = fitted(fit.nls), 
   resid = resid(fit.nls),
@@ -60,8 +67,12 @@ data.frame(
   geom_text(aes(label = label), hjust = 1.5, vjust = 0.5, size = 2) +
   theme_bw()
 
+# base R:
+plot(fitted(fit.nls), resid(fit.nls))
+abline(h=0, lty=2)
 
 ## QQ-Plot:
+#ggplot:
 data = data.frame(resid = resid(fit.nls), label = 1:nrow(chlor)) |> 
   arrange(resid) |>
   mutate(
@@ -80,10 +91,18 @@ data |>
   theme_bw()
 
 
-
+# base R:
 h = qqnorm(resid(fit.nls))
 qqline(resid(fit.nls))
 identify(h)
+
+
+
+# Likelihood Profile Traces -----------------------------------------------
+r.prof = profile(fit.nls)
+p.profileTraces(r.prof)
+# diagonal elements: profile t-plots
+# likelihood profile traces: lower diagonal
 
 
 

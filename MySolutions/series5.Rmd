@@ -68,14 +68,135 @@ coef(food.nls) + cbind(-h, h)
 
 Thus, theta4 is significantly different than one and the growth rates of the turkeys for the two food additives are significantly different.
 
+
+
+## [d]
+```{r, fig.height=10, fig.width =10}
+r.prof = profile(food.nls)
+p.profileTraces(r.prof)
+```
+
+
+## [e]
+
+Yes, they are trustworthy since only slightly curved in [-2.45, 2.45]
+
+## [f]
+```{r}
+confint(food.nls)
+```
+
+# Isomerization of n-Pentan:
+
+```{r}
+pressure.url = "http://stat.ethz.ch/Teaching/Datasets/cas-das/isomer.dat"
+pressure = read.table(pressure.url, header = T)
+```
+
+
+```{r}
+glimpse(pressure)
+```
+
+
+```{r}
+skim(pressure)
+```
+
+## [a]
+
+```{r}
+pressure.rlm = lmrob((x2 - x3/1.632)/y ~ x1 + x2 + x3, data = pressure, method = "MM")
+
+betas = coef(pressure.rlm)
+t1_0 = 1/betas[2]
+t2_0 = 1/(betas[1] * t1_0)
+t3_0 = betas[3] * t1_0 * t2_0
+t4_0 = betas[4] * t1_0 * t2_0
+```
+
+
+## [b]
+
+```{r}
+pressure.nls = nls(y ~ (t1*t3*(x2-x3/1.632))/ (1+t2*x1+t3*x2+t4*x3), data = pressure, start= list(t1=t1_0, t2=t2_0, t3=t3_0, t4 = t4_0))
+
+summary(pressure.nls, corr = T)
+```
+Theta2 and theta4 are perfectly correlated. Only theta1 is significantly different from 0.
+
+
+## [c]
+
+```{r, fig.height=10, fig.width=10}
+r.prof <- profile(pressure.nls, which = 2:4, delta.t = 0.2)
+p.profileTraces(r.prof)
+```
+
+Profile t-plots: linear approximation in neighborhood is not suited to determine CI
+
+Likelihood profile traces: highly correlated
+
+
+# Isomerisation of n-Pentan (continued):
+
+## [a]
+
+```{r}
+r.nls <- nls(y ~ (x2 - x3 / 1.632) / (phi1 + phi2 * x1 + phi3 * x2 + phi4 * x3),
+data = pressure,
+start = list(phi1 = 2.99, phi2 = 0.051, phi3 = 0.017, phi4 = 0.131))
+
+summary(r.nls, corr=T)
+```
+No longer any problems with collinearity.
+
+## [b]
+
+```{r, fig.height=10, fig.width=10}
+r.prof = profile(r.nls)
+p.profileTraces(r.prof)
+```
+Profile t-plots: Curves look almost linear
+
+Likelihood profile traces: almost perpendicular -> almost uncorrelated. Profile traces close to linear and thus confidence regions well described by ellipses.
+
+## [c]
+
+Based on Wald:
+```{r}
+h = qt(0.975, df = nrow(pressure) - 4) * summary(r.nls)$coefficients[, 2]
+wald_cis = coef(r.nls) + cbind(-h, h)
+
+wald_cis
+```
+
+Based on Profile t-function:
+```{r}
+profile_cis = confint(r.nls)
+profile_cis
+```
+
+
 ## [d]
 
+```{r}
+1 / wald_cis[3, ]
+```
 
 
+## [e]
 
+```{r}
+qqnorm(resid(r.nls))
+qqline(resid(r.nls))
+```
 
+The residuals appear to indeed follow a normal distribution.
 
+```{r}
+plot(fitted(r.nls), resid(r.nls))
+abline(h=0, lty=2)
+```
 
-
-
-
+The Tukey-Anscombe Plot does not show any special structure.

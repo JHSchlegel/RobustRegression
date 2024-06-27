@@ -7,12 +7,15 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(skimr)
 library(MASS)
 library(rrcov)
 library(robustbase)
+library(sfsmisc)
 ```
 
-
+# Robust Regression
 
 
 
