@@ -10,6 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(rrcov)
 library(tidyverse)
 library(skimr)
+source("utils.R")
 ```
 
 # Covariance Matrix and PCA:
@@ -238,13 +239,50 @@ klasse.df |>
   theme_bw()
 ```
 
+## [b]
+
+```{r}
+# classical
+lda.class = MASS::lda(Klasse ~ ., data = klasse.df)
+
+#only W robustly:
+lda.mve = MASS::lda(Klasse~ ., data = klasse.df, method = "mve")
+
+rlda.groups = rlda(x = klasse.df[, 2:3], grouping = klasse.df$Klasse)
+```
+
+
+```{r, fig.heigth =20, fig.width = 20}
+par(mfrow = c(2, 2))
+p.ldv(lda.class, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("LDA: method = 'moment'")
+
+p.ldv(lda.mve, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("LDA: method = 'mve'")
+
+p.ldv(rlda.groups, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("RLDA")
+```
+
+
+If assumptions are met, the point clouds should appear as circles if the assumptions are met. For robust method they look more like circles than for non-robust LDA where the point clouds look more ellipsoidal.
 
 
 
+## [c]
+```{r, fig.height = 20, fig.width = 20}
+par(mfrow = c(2, 2))
+p.predplot(lda.class, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("LDA: method = 'moment'")
 
+p.predplot(lda.mve, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("LDA: method = 'mve'")
 
+p.predplot(rlda.groups, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("RLDA")
+```
 
-
+Robust seems to best separate the data.
 
 
 
