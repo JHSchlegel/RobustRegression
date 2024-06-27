@@ -1,0 +1,269 @@
+---
+title: "Series 3"
+author: "Jan Schlegel"
+date: "2024-06-26"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(rrcov)
+library(tidyverse)
+library(skimr)
+```
+
+# Covariance Matrix and PCA:
+
+## [a]
+```{r}
+d.wood <- read.table("http://stat.ethz.ch/Teaching/Datasets/cas-das/woodRous.dat",
+header = TRUE)
+
+d.wood <- d.wood[, 1:5]
+```
+
+```{r}
+glimpse(d.wood)
+```
+
+```{r}
+d.wood[, 1:2] = sqrt(d.wood[, 1:2])
+d.wood[, 3:5] = asin(sqrt(d.wood[, 3:5]))
+```
+
+
+## [b]
+Classically:
+```{r}
+(cov.class <- cov(d.wood))
+```
+
+
+Robustly:
+
+```{r}
+(cov.rob <- CovRobust(d.wood, control = "mcd"))
+```
+
+```{r}
+cov.class - cov.rob$cov
+```
+
+
+We can see, that particularly the variance of nFrFas and of nSoFas as well as the covariance between nSoFas and nFrFas differ greatly (i.e. much larger when estimated robustly)
+
+
+
+## [c]
+```{r}
+md.class = mahalanobis(d.wood, center = colMeans(d.wood), cov = cov.class)
+md.rob = mahalanobis(d.wood, center = cov.rob@center, cov = cov.rob@cov)
+
+
+df.md = data.frame(classical = md.class, robust = md.rob, obs = 1:length(md.class))
+```
+
+
+```{r}
+df.md |> 
+  pivot_longer(-obs, names_to = "type") |> 
+  ggplot(aes(x = obs, y = value, col=type, shape = type)) +
+  geom_point() +
+  theme_bw()
+```
+
+```{r}
+df.md |> 
+  mutate(label = 1:nrow(df.md)) |> 
+  arrange(robust) |> 
+  mutate(theoretical_quantiles = qchisq(ppoints(nrow(df.md)), df = 5)) |> 
+  ggplot(aes(x = theoretical_quantiles, y = robust)) +
+  geom_point() + 
+  geom_text(aes(label = label), vjust = -0.5, hjust = 0.5) +
+  ylim(0, 250) +
+    geom_abline(aes(intercept = 0,slope =1), linewidth = 0.2, color = "red") +
+  theme_bw() +
+  labs(
+    title = "Robust MCD Covariance Estimate",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  )
+```
+We can clearly identify the outliers.
+
+```{r}
+df.md |> 
+  mutate(label = 1:nrow(df.md)) |> 
+  arrange(classical) |> 
+  mutate(theoretical_quantiles = qchisq(ppoints(nrow(df.md)), df = 5)) |> 
+  ggplot(aes(x = theoretical_quantiles, y = classical)) +
+  geom_point() + 
+    geom_abline(aes(intercept = 0,slope =1), linewidth = 0.2, color = "red") +
+  theme_bw() +
+  labs(
+    title = "Classical Covariance Estimate",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  )
+```
+It is difficult to say which points are outliers for classical covariance matrix estimate.
+
+
+
+## [d]
+```{r}
+pca.class = princomp(d.wood, cor = T)
+
+stand_rob_loc_scale = scale(x = d.wood, center = colMedians(as.matrix(d.wood)), scale = apply(d.wood, 2, mad))
+pca.rob_loc_scale = princomp(stand_rob_loc_scale)
+
+pca.mcd = rrcov::PcaCov(d.wood, scale = T)
+```
+
+
+```{r}
+summary(pca.class)
+```
+
+
+```{r}
+pca.class.df = as.data.frame(pca.class$scores)
+pca.class.df |> 
+  mutate(label = 1:nrow(pca.class.df)) |> 
+  ggplot(aes(x = Comp.1, y = Comp.2)) + 
+  geom_point(size = 0.5) +
+  geom_text(aes(label = label), hjust = 0.5, vjust = 1.5, size = 2) +
+  theme_bw()
+```
+Observations 19, 8, 4 and 6 are clear outliers in classical PCA.
+
+```{r}
+screeplot(pca.class)
+```
+
+
+```{r, height = 8}
+pca.var = data.frame(
+  component = 1:5,
+  classical = pca.class$sdev^2,
+  robust_scaling = pca.rob_loc_scale$sdev^2,
+  mcd = pca.mcd$eigenvalues
+)
+
+pca.var |> 
+  pivot_longer(-component, names_to="type") |> 
+  ggplot(aes(x = component, y = value, color = type, linetype = type, shape = type)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  labs(
+    x = "Component",
+    y = "Variance"
+  )
+```
+
+
+No clear elbow for PCA estimated by PCA.
+
+```{r}
+pca.var |> 
+  pivot_longer(-component, names_to="type") |> 
+  group_by(type) |> 
+  summarize(
+    var_prop = cumsum(value)/sum(value),
+    component = component
+  )
+```
+
+## [e]
+
+```{r}
+loadings(pca.class)
+```
+
+```{r}
+loadings(pca.rob_loc_scale)
+```
+
+
+```{r}
+loadings(pca.mcd)
+```
+
+## [f]
+
+```{r, fig.height = 10}
+pairs(pca.class$scores)
+```
+
+```{r, fig.height = 10}
+pairs(pca.rob_loc_scale$scores)
+```
+
+
+```{r, fig.height=10}
+pairs(pca.mcd$scores)
+pairs(predict(pca.mcd))
+```
+
+
+When using classical PCA on original or robustly standardized data, we find the outliers in the first component because the outliers account for a large part of the variability. For robust PCA, the outliers only show in the fourth component.
+
+
+
+
+# Linear Discriminant Analysis
+
+```{r}
+klasse.url = "https://stat.ethz.ch/Teaching/Datasets/cas-das/rob-disk.dat"
+klasse.df = read.table(klasse.url, header = T)
+```
+
+```{r}
+glimpse(klasse.df)
+```
+
+
+```{r}
+skim(klasse.df)
+```
+
+
+## [a]
+
+```{r}
+klasse.df |> 
+  ggplot(aes(x = x1, y = x2, color = Klasse, shape = Klasse)) + 
+  geom_point(size = 0.5) + 
+  theme_bw()
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
