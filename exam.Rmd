@@ -1,0 +1,35 @@
+---
+title: "Exam"
+author: "Jan Schlegel"
+date: "2024-06-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(MASS)
+library(rrcov)
+library(robustbase)
+library(tidyverse)
+library(GGally)
+```
+
+# Robust Regression
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Non-Linear Regression

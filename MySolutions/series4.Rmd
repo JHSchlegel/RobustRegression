@@ -1,0 +1,177 @@
+---
+title: "Series 4"
+author: "Jan Schlegel"
+date: "2024-06-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(MASS)
+library(skimr)
+library(robustbase)
+```
+
+# Exercise 1:
+
+```{r}
+chlor.url = "https://stat.ethz.ch/Teaching/Datasets/cas-das/chlor.dat"
+chlor = read.table(chlor.url, header = T)
+```
+
+```{r}
+skim(chlor)
+```
+
+```{r}
+glimpse(chlor)
+```
+
+## [a]
+
+```{r}
+chlor |> 
+  ggplot(aes(x = weeks, y = chlorine)) +
+  geom_point(size =0.5) +
+  theme_bw()
+```
+
+
+## [b]
+
+```{r}
+a_0 = min(chlor$chlorine) - 0.01
+fit.rlm = lmrob(log((chlorine - a_0) / (0.49 - a_0)) ~ weeks, data = chlor)
+summary(fit.rlm)
+
+g_0 = coef(fit.rlm)[1]
+b_0 = coef(fit.rlm)[2]
+```
+
+
+## [c]
+
+```{r}
+fit.nls = nls(chlorine ~ a + (0.49 - a)* exp(b*weeks + g), data = chlor, start = list(a = a_0, b = b_0, g = g_0))
+summary(fit.nls)
+est = coef(fit.nls)
+```
+
+## [d]
+
+```{r}
+x_grid = seq(min(chlor$weeks), max(chlor$weeks), l = 1000)
+plot(chlor$chlorine ~ chlor$weeks)
+lines(x_grid, est[1] + (0.49-est[1]) * exp(est[2]*x_grid + est[3]))
+lines(x_grid, a_0 + (0.49 - a_0) * exp(b_0 * x_grid + g_0), lty=2, col = "tomato")
+legend("bottomleft", col = c("black", "tomato"), lty=c(1, 2), legend = c("Final", "Initial"))
+```
+
+
+## [e]
+
+```{r}
+sm.nls = summary(fit.nls)
+h = qt(0.975, df = nrow(chlor) - 3) * sm.nls$coefficients[, 2] 
+ci = coef(fit.nls) + cbind(-h, h)
+
+rownames(ci) = c("alpha", "beta", "gamma")
+print(ci)
+print(confint(fit.nls))
+```
+
+The confidence intervals are not exactly the same.
+
+
+## [f]
+
+
+
+```{r}
+data.frame(
+  fitted = fitted(fit.nls), 
+  resid = resid(fit.nls),
+  label = 1:nrow(chlor)
+) |> 
+  ggplot(aes(x = fitted, y = resid)) + 
+  geom_point(size = 0.5) +
+  geom_smooth(color = "firebrick", fill = "firebrick", alpha = 0.5, linewidth =0.5) +
+  geom_hline(aes(yintercept=0), color = "grey40", linewidth = 0.5, linetype = "dashed")+
+  geom_text(aes(label = label), hjust = 1.5, vjust = 0.5, size = 2) +
+  theme_bw()
+```
+
+
+
+```{r}
+data = data.frame(resid = resid(fit.nls), label = 1:nrow(chlor)) |> 
+  arrange(resid) |>
+  mutate(
+    theoretical_quantiles = qnorm(ppoints(nrow(chlor))),
+    sample_quantiles = resid
+  ) 
+
+slope <- sd(data$sample_quantiles) / sd(data$theoretical_quantiles)
+intercept <- mean(data$sample_quantiles) - slope * mean(data$theoretical_quantiles)
+
+data |> 
+  ggplot(aes(x = theoretical_quantiles, y = sample_quantiles)) +
+  geom_point(size = 0.5) +
+  geom_text(aes(label = label), size = 2, hjust = 1.5, vjust = 0.5) +
+    geom_abline(intercept = intercept, slope = slope, color = "red", linetype = "dashed") +
+  theme_bw()
+```
+
+
+
+# Exercise 2:
+
+```{r}
+gubrist = read.table("http://stat.ethz.ch/Teaching/Datasets/cas-das/gubrist.dat", header = TRUE, sep = ";")
+```
+
+
+## [a]
+
+```{r}
+fit.lm = lm(Emiss.NOx ~ pDiesel, data = gubrist, na.action = "na.omit")
+coef(fit.lm)
+
+alpha_0 = coef(fit.lm)[1]
+beta_0 = sum(coef(fit.lm))
+```
+
+
+
+
+## [b]
+```{r, fig.height = 10, fig.width = 10}
+par(mfrow = c(2, 2))
+plot(fit.lm)
+```
+Errors are clearly not normally distributed. Moreover, the variance is increasing $\leadsto$ transforming the responise
+
+## [c]
+
+We use the parameter estimates from above as starting values
+```{r}
+gubrist.nls = nls(log(Emiss.NOx) ~ log(a + b*pDiesel), data = na.omit(gubrist), start = list(a=alpha_0, b=beta_0))
+summary(gubrist.nls)
+
+print(c("a" = coef(gubrist.nls)[1], "b" = sum(coef(gubrist.nls))))
+```
+
+Yes, a is larger.
+## [c]
+```{r}
+qqnorm(resid(gubrist.nls))
+qqline(resid(gubrist.nls))
+```
+
+```{r}
+plot(fitted(gubrist.nls), resid(gubrist.nls))
+abline(h=0, lty = 2)
+```
+
+Residuals look less skewed and TA plot looks better.
