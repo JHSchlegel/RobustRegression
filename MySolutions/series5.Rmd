@@ -1,0 +1,81 @@
+---
+title: "Series 5"
+author: "Jan Schlegel"
+date: "2024-06-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(robustbase)
+library(MASS)
+library(skimr)
+```
+
+# Exercise 1:
+
+```{r}
+food.url = "http://stat.ethz.ch/Teaching/Datasets/cas-das/body.dat"
+food = read.table(food.url, header = T)
+```
+
+
+```{r}
+glimpse(food)
+```
+
+```{r}
+skim(food)
+```
+
+
+## [a]
+
+
+```{r}
+theta1_0 = 640
+max_weight = max(food$weight)
+theta2_0 = 160 #max_weight - theta1_0 + 1 # to avoid numerical problems
+
+fit.rlm = lmrob(log(1-(weight - theta1_0)/theta2_0) ~ -1 + sourceA + sourceB, data = food)
+
+theta3_0 = coef(fit.rlm)[2]
+theta4_0 = coef(fit.rlm)[1] / theta3_0
+
+c(theta1_0, theta2_0, theta3_0, theta4_0)
+```
+
+
+
+## [b]
+
+```{r}
+food.nls = nls(weight ~ theta1 + theta2 * (1 - exp(theta3 * (theta4 * sourceA + sourceB))), data = food, control = nls.control(maxit = 1000), start = list(theta1 = theta1_0, theta2 = theta2_0, theta3 = theta3_0, theta4 = theta4_0))
+
+
+summary(food.nls)
+```
+
+
+All parameters are highly significant. The parameters differ from the initial values.
+
+## [c]
+```{r}
+h = qt(0.975, df = nrow(food) - 4) * summary(food.nls)$coefficients[, 2]
+coef(food.nls) + cbind(-h, h)
+```
+
+Thus, theta4 is significantly different than one and the growth rates of the turkeys for the two food additives are significantly different.
+
+## [d]
+
+
+
+
+
+
+
+
+
+

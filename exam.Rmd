@@ -10,14 +10,7 @@ knitr::opts_chunk$set(echo = TRUE)
 library(MASS)
 library(rrcov)
 library(robustbase)
-library(tidyverse)
-library(GGally)
 ```
-
-# Robust Regression
-
-
-
 
 
 
