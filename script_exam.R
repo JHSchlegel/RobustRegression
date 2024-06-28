@@ -152,14 +152,14 @@ lda.class = MASS::lda(Klasse ~ ., data = klasse.df)
 lda.mve = MASS::lda(Klasse~ ., data = klasse.df, method = "mve")
 
 ## W and locations of groups robustly (see utils file):
-rlda.groups = rlda(x = klasse.df[, 2:3], grouping = klasse.df$Klasse)
+lda.rob = rlda(x = klasse.df[, 2:3], grouping = klasse.df$Klasse)
 
 ## Scatter plot first and secondend discriminant axis
-p.ldv(rlda.groups, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+p.ldv(lda.rob, data = klasse.df[, 2:3], group = klasse.df$Klasse)
 title("RLDA")
 
 ## Plot decision boundary
-p.predplot(rlda.groups, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+p.predplot(lda.rob, data = klasse.df[, 2:3], group = klasse.df$Klasse)
 title("RLDA")
 
 ################################################################################

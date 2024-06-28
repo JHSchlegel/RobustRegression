@@ -6,7 +6,11 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.height = 8,
+  fig.width = 8
+)
 library(tidyverse)
 library(skimr)
 library(MASS)
@@ -17,6 +21,7 @@ library(nlstools)
 library(investr)
 library(RobStatTM)
 
+source("utils.R")
 
 theme_set(theme_bw())
 ```

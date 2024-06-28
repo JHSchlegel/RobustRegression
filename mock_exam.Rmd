@@ -1,0 +1,305 @@
+---
+title: "Mock Exam"
+author: "Jan Schlegel"
+date: "2024-06-28"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,
+  fig.height = 8,
+  fig.width = 8
+)
+library(tidyverse)
+library(skimr)
+library(MASS)
+library(rrcov)
+library(robustbase)
+library(sfsmisc)
+library(nlstools)
+library(investr)
+library(RobStatTM)
+
+
+theme_set(theme_bw())
+```
+
+
+
+# Robust Regression
+
+## Ex. 1
+
+```{r}
+RP <- read.table("http://stat.ethz.ch/Teaching/Datasets/WBL/RP.dat",
+header = TRUE)
+```
+
+```{r}
+glimpse(RP)
+```
+
+```{r}
+skim(RP)
+```
+
+
+### [a]
+```{r}
+rp.form = as.formula("AL ~ Hard + tTS")
+rp.ls = lm(rp.form, data = RP)
+
+
+
+rp.rlm = lmrob(rp.form, data = RP, method = "MM")
+```
+
+
+```{r}
+ci.ls = confint(rp.ls)
+ci.rlm = confint(rp.rlm)
+```
+
+```{r}
+ci.ls[, 2] - ci.ls[,1]
+ci.rlm[, 2] - ci.rlm[,1]
+```
+The robust CIs are a lot smaller for all coefficients
+
+```{r}
+ci.ls
+ci.rlm
+```
+
+Moreover, all parameters are significantly different from zero on the 5% significance level for both lm and rlm CIs.
+
+
+### [b]
+
+```{r}
+par(mfrow = c(2, 2))
+plot(rp.ls)
+```
+
+
+```{r}
+par(mfrow = c(2, 2))
+plot(rp.rlm)
+```
+In the MM-estimation regression model we can clearly see that the observations (30, 24,19) are strong outliers. This is particularly evident in the TA plot, QQ-plot and the standardized residuals vs robust distances plot. In the classical OLS regression however, we cannot spot any violations of the assumptions of the plots. Even the residuals there look approximately normal.
+
+
+
+
+## Ex. 2
+
+```{r}
+Fish2 <- read.table("http://stat.ethz.ch/Teaching/Datasets/WBL/Fish2.dat",
+header = TRUE)
+```
+
+
+```{r}
+glimpse(Fish2)
+```
+
+```{r}
+skim(Fish2)
+```
+
+### [a]
+
+
+#### (i)
+```{r}
+dim(Fish2)
+```
+
+Stahel-Dono
+
+#### (ii)
+```{r}
+(cov.class = cov(Fish2[, -7]))
+
+set.seed(42)
+(cov.rob <- CovRobust(Fish2[, -7], control = "auto"))
+
+```
+
+```{r}
+# lweight & lwidth
+cbind("classical" = cov.class[1, 6], "robust"=cov.rob@cov[1, 6])
+
+# lheight & lwidth
+cbind("classical" = cov.class[6, 5], "robust" = cov.rob@cov[6, 5])
+```
+
+In both cases the robustly estimated covariance is higher.
+
+### [b]
+
+#### (i)
+```{r}
+md.class = mahalanobis(Fish2[, -7], center=colMeans(Fish2[, -7]), cov=cov.class)
+md.rob = mahalanobis(Fish2[, -7], center = cov.rob@center, cov = cov.rob@cov)
+
+q = qchisq(0.95, df = 6)
+```
+
+#### (ii)
+```{r}
+sum(md.class > q)
+sum(md.rob > q)
+```
+
+### [c]
+
+#### (i)
+```{r}
+## Classical:
+lda.class = MASS::lda(Species ~ ., data = Fish2)
+
+
+## W and locations of groups robustly (see utils file):
+lda.rob = rlda(x = Fish2[, -7], grouping = Fish2$Species)
+```
+
+```{r}
+par(mfrow = c(1, 2))
+
+p.ldv(lda.class, data = Fish2[, -7], group = Fish2$Species)
+title("Classical")
+
+p.ldv(lda.rob, data = Fish2[, -7], group = Fish2$Species)
+title("RLDA")
+```
+Look more spherical in classical LDA
+Robust have the ellipsoidal shape that we desire.
+
+
+#### (ii)
+
+It estimates the location of the groups as well as the covariance matrix W in a robust manner.
+
+
+
+# Non-linear Regression
+
+```{r}
+d.hake <- read.table("http://stat.ethz.ch/Teaching/Datasets/WBL/dhake.dat",
+header = TRUE)
+```
+
+```{r}
+glimpse(d.hake)
+```
+
+```{r}
+skim(d.hake)
+```
+
+
+
+### [a]
+```{r}
+bh.nls = nls(Y ~ (a * S)/ (1 + S/k), data = d.hake, start = list(a = 5, k = 40))
+summary(bh.nls)
+coef(bh.nls)
+```
+
+### [b]
+
+
+Wald approach:
+```{r}
+sm.nls = summary(bh.nls)
+
+h = qt(0.975, df = nrow(d.hake) - 2) * sm.nls$coefficients[, 2] 
+(wald.ci = coef(bh.nls) + cbind(-h, h))
+wald.ci
+```
+
+Profile likelihood based:
+```{r}
+(l.ci = confint(bh.nls))
+```
+
+Bootstrapping:
+```{r}
+set.seed(42)
+bh.boot = nlsBoot(bh.nls, niter = 999)
+
+(boot.ci = bh.boot$bootCI)
+```
+
+```{r}
+cbind(
+  "wald"=wald.ci[, 2] - wald.ci[, 1],
+  "lik" = l.ci[, 2] - l.ci[,1 ],
+  "boot" = boot.ci[, 3] - boot.ci[, 2]
+)
+```
+
+Likelihood the widest, boot the narrowest. All significantly different from 1.
+
+### [c]
+
+```{r}
+cor(bh.boot$coefboot)
+plot(bh.boot)
+```
+a and k are highly negatively correlated.
+
+
+### [d]
+```{r}
+r.prof = profile(bh.nls)
+p.profileTraces(r.prof)
+```
+They are almost perfectly negatively correlated. Moreover, the profile t-plot traces are non-linear indicating that the linear approximation is not very accurate.
+
+
+### [e]
+
+```{r}
+plot(fitted(bh.nls), resid(bh.nls))
+abline(h=0, lty = 2)
+```
+
+```{r}
+qqnorm(resid(bh.nls))
+qqline(resid(bh.nls))
+```
+
+### [f]
+
+```{r}
+newdat = list(S = 35)
+preds.int = investr::predFit(bh.nls, newdata = newdat, interval = "prediction")
+preds.int
+```
+
+
+### [g]
+
+
+```{r}
+all(d.hake$Y >0)
+bh.ls  = lm(S/Y ~ S, data = d.hake)
+
+betas = coef(bh.ls)
+```
+
+```{r}
+(a_0 = 1/ betas[1])
+(k_0 = 1 / (betas[2] * a_0))
+```
+
+
+
+
+
+
+
+
