@@ -110,7 +110,14 @@ p.profileTraces(r.prof)
 boot.nls = nlsBoot(fit.nls, niter = 999)
 
 ## CI:
+# percentile:
 summary(boot.nls); boot.nls$bootCI
+
+# Wald:
+confint2(boot.nls, method = "asymptotic")
+
+## Profile Likelihood:
+confint(boot.nls)
 
 
 ## Manually (w/o quantiles):
@@ -129,7 +136,6 @@ ci_upper_sorted <- sorted_bootstrap_samples[upper_index]
 ## Pairs plot:
 plot(boot.nls)
 
-
 ## Histogram:
 data.frame(boot.nls$coefboot, iter = 1:991) |> 
   pivot_longer(-iter, names_to = "param") |> 
@@ -137,6 +143,26 @@ data.frame(boot.nls$coefboot, iter = 1:991) |>
   geom_histogram(fill = "midnightblue", color = "white") +
   facet_wrap(~param, scale = "free_x") +
   theme_bw()
+
+
+
+# Boot Library ------------------------------------------------------------
+
+library(boot)
+f.bod <- function(rs, ind){
+  bsY <- fitted(D.bod.nls) + rs[ind]
+  coef(nls(bsY ∼ Th1*(1-exp(-Th2*days)), data=D.bod,
+           start=coef(D.bod.nls)))
+}
+h.rs <- scale(resid(D.bod.nls), scale=FALSE) ## mean centred residuals
+## bootstrapping
+set.seed(seed=117)
+D.bod.nls.Boot2 <- boot(h.rs, f.bod, R=4999, stype="i" )
+## bias-corrected accelerated (bca) bootstrap interval
+rbind(boot.ci(D.bod.nls.Boot2, conf=0.95, type="bca", index=1)$bca[4:5],
+       boot.ci(D.bod.nls.Boot2, conf=0.95, type="bca", index=2)$bca[4:5])
+
+
 
 
 
@@ -162,13 +188,14 @@ calibr.int = invest(
   fit.nls, y0 = 5.1, interval = "percentile", 
   boot.type ="parametric", nsim = 300, seed = 42
 )
+plot(calibr.int)
 
 ## nonparametric bootrstrap:
 calibr.int = invest(
   fit.nls, y0 = 5.1, interval = "percentile", 
   boot.type ="nonparametric", nsim = 300, seed = 42
 )
-
+plot(calibr.int)
 
 
 
