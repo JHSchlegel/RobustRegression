@@ -3,32 +3,164 @@
 ################################################################################
 
 
+# M estimation ------------------------------------------------------------
+## HuberM:
+robfit = huberM(df, se = T, k = 1.345)
+robfit$mu + c(-1, 1) * qt(0.975, length(df) - 1) * robfit$SE
+
+## rlm:
+rlm(ValuesOrg ~ Block + Variety, data = oats, psi = psi.huber, method = "M", maxit = 50)
+
+# MM estimation -----------------------------------------------------------
+fit.mm = lmrob(formula, data = dat)
+
+
+# SMDM Estimation ---------------------------------------------------------
+lmrob(y~., data = synth, setting = "KS2014")
+
+
+
+# ANOVA -------------------------------------------------------------------
+## Robust LM:
+anova(m1, m2, test = "Wald")
+anova(m1, m2, test = "Deviance")
+
+## Robust GLM:
+anova(ep.rglm, ep.rglm2, test = "QD")
+
+
+# Variable Selection ------------------------------------------------------
+## lm:
+step(fit.lm, direction= "backward", trace = F)
+
+## roblm:
+h.cont = lmrobdet.control(bb=0.5, efficiency = 0.85, family = "bisquare")
+rlm1 = lmrobdetMM(SpGew~., data = wood.cont, control = h.cont)
+step.lmrobdetMM(rlm1)
 
 
 
 
+# Robust GLM --------------------------------------------------------------
+## No potential outliers in x-space:
+s.rglm = glmrob(PASS ~., data = apt, family = binomial(), method = "Mqle")
+plot(s.rglm$w.r); plot(s.rglm$w.x)
+
+## Potential outliers in x-space:
+s.rglm = glmrob(ep.formula, data = epilepsy, family = poisson(), method = "Mqle", weights.on.x = "hat")
+plot(s.rglm$w.r); plot(s.rglm$w.x)
+
+
+## Plotting w/ obs. number:
+ep.df = data.frame(wx = ep.rglm2$w.x, label = 1:length(ep.rglm2$w.x))
+
+ep.df |> 
+  ggplot(aes(x=label, y = wx)) +
+  geom_point() +
+  geom_text(aes(label = label), hjust = 1.5, vjust = 0.5) +
+  theme_bw()
 
 
 
+# Robust Covariance -------------------------------------------------------
+(cov.rob <- CovRobust(d.wood, control = "mcd"))
+
+
+# Mahalanobis Distance ----------------------------------------------------
+## classical:
+cov.class = cov(d.wood)
+md.class = mahalanobis(d.wood, center = colMeans(d.wood), cov = cov.class)
+
+##  robust:
+cov.rob = CovRobust(d.wood, control = "mcd")
+md.rob = mahalanobis(d.wood, center = cov.rob@center, cov = cov.rob@cov)
+
+## Plotting:
+# robust vs classical:
+df.md |> 
+  pivot_longer(-obs, names_to = "type") |> 
+  ggplot(aes(x = obs, y = value, col=type, shape = type)) +
+  geom_point() +
+  theme_bw()
+
+# Chisq. QQ-Plot:
+df.md |> 
+  mutate(label = 1:nrow(df.md)) |> 
+  arrange(robust) |> 
+  mutate(theoretical_quantiles = qchisq(ppoints(nrow(df.md)), df = 5)) |> 
+  ggplot(aes(x = theoretical_quantiles, y = robust)) +
+  geom_point() + 
+  geom_text(aes(label = label), vjust = -0.5, hjust = 0.5) +
+  ylim(0, 250) +
+  geom_abline(aes(intercept = 0,slope =1), linewidth = 0.2, color = "red") +
+  theme_bw() +
+  labs(
+    title = "Robust MCD Covariance Estimate",
+    x = "Theoretical Quantiles",
+    y = "Sample Quantiles"
+  )
 
 
 
+# PCA ---------------------------------------------------------------------
+## Classical:
+pca.class = princomp(d.wood, cor = T)
+
+## Robustly standardized:
+stand_rob_loc_scale = scale(x = d.wood, center = colMedians(as.matrix(d.wood)), scale = apply(d.wood, 2, mad))
+pca.rob_loc_scale = princomp(stand_rob_loc_scale)
+
+## Robustly estimated covmat:
+pca.mcd = rrcov::PcaCov(d.wood, scale = T)
+
+## get loadings:
+loadings(pca.obj)
+
+## pairs plots:
+pairs(pca.obj$scores)
+
+## Scree plots:
+# base R:
+screeplot(pca.obj)
+
+# ggplot:
+pca.var = data.frame(
+  component = 1:5,
+  classical = pca.class$sdev^2,
+  robust_scaling = pca.rob_loc_scale$sdev^2,
+  mcd = pca.mcd$eigenvalues
+)
+
+pca.var |> 
+  pivot_longer(-component, names_to="type") |> 
+  ggplot(aes(x = component, y = value, color = type, linetype = type, shape = type)) +
+  geom_point() +
+  geom_line() +
+  theme_bw() +
+  labs(
+    x = "Component",
+    y = "Variance"
+  )
 
 
 
+# LDA ---------------------------------------------------------------------
+## Classical:
+lda.class = MASS::lda(Klasse ~ ., data = klasse.df)
 
+## Only W robustly:
+lda.mve = MASS::lda(Klasse~ ., data = klasse.df, method = "mve")
 
+## W and locations of groups robustly (see utils file):
+rlda.groups = rlda(x = klasse.df[, 2:3], grouping = klasse.df$Klasse)
 
+## Scatter plot first and secondend discriminant axis
+p.ldv(rlda.groups, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("RLDA")
 
-
-
-
-
-
-
-
-
-
+## Plot decision boundary
+p.predplot(rlda.groups, data = klasse.df[, 2:3], group = klasse.df$Klasse)
+title("RLDA")
 
 ################################################################################
 ###                       Non-Linear Regression                              ###
@@ -51,6 +183,9 @@ confint(fit.nls)
 
 
 # Residual Analysis -------------------------------------------------------
+## Scatter plots by variable:
+scatter.smooth(dat$var1, resid(fit))
+
 ## Tukey-Anscombe plot:
 # should not show any special structure
 
@@ -151,7 +286,7 @@ data.frame(boot.nls$coefboot, iter = 1:991) |>
 library(boot)
 f.bod <- function(rs, ind){
   bsY <- fitted(D.bod.nls) + rs[ind]
-  coef(nls(bsY ∼ Th1*(1-exp(-Th2*days)), data=D.bod,
+  coef(nls(bsY ~ Th1*(1-exp(-Th2*days)), data=D.bod,
            start=coef(D.bod.nls)))
 }
 h.rs <- scale(resid(D.bod.nls), scale=FALSE) ## mean centred residuals

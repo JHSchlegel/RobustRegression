@@ -15,6 +15,10 @@ library(robustbase)
 library(sfsmisc)
 library(nlstools)
 library(investr)
+library(RobStatTM)
+
+
+theme_set(theme_bw())
 ```
 
 # Robust Regression
