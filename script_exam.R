@@ -106,3 +106,69 @@ p.profileTraces(r.prof)
 
 
 
+# Bootstrapping -----------------------------------------------------------
+boot.nls = nlsBoot(fit.nls, niter = 999)
+
+## CI:
+summary(boot.nls); boot.nls$bootCI
+
+
+## Manually (w/o quantiles):
+# Sort the bootstrap samples
+sorted_bootstrap_samples <- sort(bootstrap_samples)
+
+# Calculate the indices for the 2.5th and 97.5th percentiles
+lower_index <- ceiling(0.025 * n_boot)
+upper_index <- floor(0.975 * n_boot)
+
+# Extract the confidence interval values
+ci_lower_sorted <- sorted_bootstrap_samples[lower_index]
+ci_upper_sorted <- sorted_bootstrap_samples[upper_index]
+
+
+## Pairs plot:
+plot(boot.nls)
+
+
+## Histogram:
+data.frame(boot.nls$coefboot, iter = 1:991) |> 
+  pivot_longer(-iter, names_to = "param") |> 
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = "midnightblue", color = "white") +
+  facet_wrap(~param, scale = "free_x") +
+  theme_bw()
+
+
+
+# Prediction Intervals ----------------------------------------------------
+newdat = list(dose = c(-1.5, 0, 2))
+conf.int = investr::predFit(fit.nls, newdata = newdat, interval = "confidence")
+preds.int = investr::predFit(fit.nls, newdata = newdat, interval = "prediction")
+# width:
+preds.int[, 3] - preds.int[2]
+
+
+
+# Calibration Intervals ---------------------------------------------------
+## Wald approach:
+# measured a single value:
+calibr.int = invest(fit.nls, y0 = 5.1, interval = "inversion")
+# multiple measurements fo rthe same lot -> smaller int:
+calibr.int = invest(fit.nls, y0 = c(5.1, 7.3, 6.2), interval="inversion")
+
+
+## bca bootstrap:
+calibr.int = invest(
+  fit.nls, y0 = 5.1, interval = "percentile", 
+  boot.type ="parametric", nsim = 300, seed = 42
+)
+
+## nonparametric bootrstrap:
+calibr.int = invest(
+  fit.nls, y0 = 5.1, interval = "percentile", 
+  boot.type ="nonparametric", nsim = 300, seed = 42
+)
+
+
+
+

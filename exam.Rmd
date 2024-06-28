@@ -13,6 +13,8 @@ library(MASS)
 library(rrcov)
 library(robustbase)
 library(sfsmisc)
+library(nlstools)
+library(investr)
 ```
 
 # Robust Regression

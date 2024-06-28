@@ -1,0 +1,265 @@
+---
+title: "Series 6"
+author: "Jan Schlegel"
+date: "2024-06-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(skimr)
+library(boot)
+library(nlstools)
+library(sfsmisc)
+library(investr)
+```
+
+
+
+# Bootstrap:
+
+## [a]
+
+```{r}
+body.url = "http://stat.ethz.ch/Teaching/Datasets/cas-das/body.dat"
+body = read.table(body.url, header = T)
+```
+
+
+```{r}
+glimpse(body)
+```
+
+```{r, fig.height=10, fig.width=10}
+pairs(body)
+```
+
+
+
+## [b]
+
+```{r}
+body.nls <- nls(
+  weight ~ theta1 + theta2 * (1 - exp(theta3 * (theta4 * sourceA + sourceB))),
+  data = body, 
+  start = list(theta1 = 640, theta2 = 160, theta3 = -10.6, theta4 = 0.76),
+  control = nls.control(maxit = 1000)
+)
+
+
+set.seed(42)
+body.boot = nlsBoot(body.nls, niter = 999)
+data.frame(body.boot$coefboot, iter = 1:999) |> 
+  pivot_longer(-iter, names_to = "param") |> 
+  ggplot(aes(x = value, fill = param)) +
+  geom_histogram(color = "#CCCCCC") +
+  facet_wrap(~param, scale = "free_x") +
+  theme_bw()
+```
+
+
+Clearly, 1 lies outside the bootstrapped confidence interval for theta4.
+
+
+
+## [c]
+
+```{r}
+body.boot$bootCI
+```
+
+
+## [d] & [e]
+
+```{r}
+isomer.url = "http://stat.ethz.ch/Teaching/Datasets/cas-das/isomer.dat"
+isomer = read.table(isomer.url, header = T)
+```
+
+
+```{r}
+r.nls <- nls(y ~theta1 * theta3 * (x2 - x3 / 1.632) /
+(1 + theta2 * x1 + theta3 * x2 + theta4 * x3),
+data = isomer,
+start = list(theta1 = 58, theta2 = 0.017, theta3 = 0.006, theta4 = 0.044))
+
+set.seed(42)
+
+isomer.boot = nlsBoot(r.nls, niter = 999)
+```
+
+```{r}
+plot(isomer.boot)
+```
+
+The high correlation is clearly visible; might be the reason there are convergence issues.
+
+## [f]
+
+```{r}
+r.nls <- nls(y ~ (x2 - x3 / 1.632) /
+(phi1 + phi2 * x1 + phi3 * x2 + phi4 * x3),
+data = isomer,
+start = list(phi1 = 2.99, phi2 = 0.051, phi3 = 0.017, phi4 = 0.131))
+
+set.seed(42)
+reparam.boot = nlsBoot(r.nls, niter = 995)
+plot(reparam.boot)
+```
+
+Looks much better than before
+
+
+## [g]
+```{r}
+data.frame(reparam.boot$coefboot, iter = 1:991) |> 
+  pivot_longer(-iter, names_to = "param") |> 
+  ggplot(aes(x = value)) +
+  geom_histogram(fill = "midnightblue", color = "white") +
+  facet_wrap(~param, scale = "free_x") +
+  theme_bw()
+```
+
+Looks around [-2.5, 4.5]
+
+```{r}
+quantile(reparam.boot$coefboot[, 1], c(0.025, 0.975))
+```
+
+
+
+```{r}
+phi1.sort = sort(reparam.boot$coefboot[, 1])
+phi1.sort[ceiling(0.025* 991)]
+phi1.sort[floor(0.975*991)]
+```
+
+## [i]
+
+Check whether phi2 significantly different from 0.
+
+```{r}
+summary(reparam.boot)
+```
+
+Phi2 significantly different from zero and thus x1 has an influence on the response variable y.
+
+
+# Radioimmunoassay of Cortisol:
+
+```{r}
+cortisol = read.table("http://stat.ethz.ch/Teaching/Datasets/cas-das/cortisol.dat",
+header = TRUE, sep = ",")
+```
+
+```{r}
+glimpse(cortisol)
+```
+
+
+## [a]
+
+```{r}
+cortisol.nls = nls(
+  y~theta1 + (theta2-theta1) / ((1 + exp(theta3 + theta4*dose))^theta5), data = cortisol,
+  start = list(theta1 = 5, theta2 = 8, theta3 = 3, theta4 = 3, theta5 = 0.6))
+
+summary(cortisol.nls)
+```
+Note that all coefficients are highly significant.
+
+
+## [b]
+
+```{r}
+r.prof = profile(cortisol.nls)
+p.profileTraces(r.prof)
+```
+
+
+```{r}
+cortisol.nls2 = nls(
+  y~theta1 + (theta2-theta1) / ((1 + exp(theta3 + theta4*dose))^0.5), data = cortisol,
+  start = list(theta1 = 5, theta2 = 8, theta3 = 3, theta4 = 3))
+
+summary(cortisol.nls2)
+```
+
+```{r}
+r.prof = profile(cortisol.nls2)
+p.profileTraces(r.prof)
+```
+
+
+All likelihood traces are now completely linear and almost orthogonal/ uncorrelated.
+
+
+## [c]
+```{r}
+newdat = list(dose = c(-1.5, 0, 2))
+
+preds.a = predFit(cortisol.nls, newdata = newdat, interval="prediction")
+preds.b = investr::predFit(cortisol.nls2, newdata = newdat, interval = "prediction")
+
+preds.a
+preds.b
+```
+```{r}
+preds.a[, 3] - preds.a[, 2]
+preds.b[, 3] - preds.b[, 2]
+```
+The one for x_new=2 are the widest.
+
+
+## [d]
+
+just draw lines of prediction interval
+
+## [e]
+```{r}
+calibr.int_7 = invest(cortisol.nls2, y0 = 7, interval = "inversion")
+
+calibr.int_7
+
+
+calibr.int_5.1 = invest(cortisol.nls2, y0 = 5.1, interval = "inversion")
+
+calibr.int_5.1
+```
+
+
+
+## [f]
+```{r}
+calibr.int = invest(
+  cortisol.nls, y0 = 5.1, interval = "percentile", 
+  boot.type ="parametric", nsim = 300, seed = 42
+)
+calibr.int
+
+calibr.int = invest(
+  cortisol.nls, y0 = 7, interval = "percentile", 
+  boot.type ="parametric", nsim = 300, seed = 42
+)
+calibr.int
+```
+
+The intervals are very similar.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
